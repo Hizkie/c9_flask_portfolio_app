@@ -24,7 +24,6 @@ def index():
       cur.close()
       return render_template("index.html", error="አባከዎን አንዱን ምርጫ ይምረጡ", tweet=data)
 
-
     else:
       details = request.form 
       ids = details['id']
