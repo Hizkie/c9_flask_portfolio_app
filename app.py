@@ -1,99 +1,73 @@
-from flask import Flask, render_template, request, redirect
-import datetime
-import pytz # timezone 
-import requests
-import os
-
-
+from flask import Flask, request, render_template
+from flask_mysqldb import MySQL
 
 app = Flask(__name__)
 
 
-@app.route('/', methods=['GET'])
-def home_page():
-	return render_template('index.html')
+app.config['MYSQL_HOST'] = 'kcpgm0ka8vudfq76.chr7pe7iynqr.eu-west-1.rds.amazonaws.com'
+app.config['MYSQL_USER'] = 'kcpqmduod16lyyh2'
+app.config['MYSQL_PASSWORD'] = 'dahm3oxh2cakdjm8'
+app.config['MYSQL_DB'] = 'vnb273g86ehntst1'
 
-@app.route('/<name>')
-def profile(name):
-	return render_template('index.html', name=name)
-
-
-@app.route('/add_numbers', methods=['GET','POST'])
-def add_numbers_post():
-	  # --> ['5', '6', '8']
-	  # print(type(request.form['text']))
-	  if request.method == 'GET':
-	  	return render_template('add_numbers.html')
-	  elif request.method == 'POST':
-  	      print(request.form['text'].split())
-  	      total = 0
-  	      try:
-  	      	for str_num in request.form['text'].split():
-  	      		total += int(str_num)
-  	      	return render_template('add_numbers.html', result=str(total))
-  	      except ValueError:
-  	      	return "Easy now! Let's keep it simple! 2 numbers with a space between them please"
+mysql = MySQL(app)
 
 
-@app.route('/shopping_list', methods=['GET','POST'])
-def shopping_list_post():
-	  # --> ['5', '6', '8']
-	  # print(type(request.form['text']))
 
-    if request.method == 'GET':
-      return render_template('shopping_list.html')
-    elif request.method == 'POST':
-          print(request.form['text'].split())
-          
-          shop_list = []
-          try:
-            for item in request.form['text'].split():
-              
-              shop_list.append(item)
+@app.route('/', methods=['GET', 'POST'])
 
-              
-              
-            return render_template('shopping_list.html', result="\n".join([str(item) for item in shop_list]))
-          except ValueError:
-            return "Easy now! Let's keep it simple! Just words with a space between them"
-          
-  	      
-@app.route('/time', methods=['GET','POST'])
-def time_post():
-    # --> ['5', '6', '8']
-    # print(type(request.form['text']))
-
-    if request.method == 'GET':
-      return render_template('time.html')
-    elif request.method == 'POST':
-          print(request.form['text'].split())
-          
-          for item in request.form['text'].split():
-            answer = (datetime.datetime.now(pytz.timezone("Europe/Dublin")).strftime('Time = ' + '%H:%M:%S' + ' GMT ' + ' Year = ' + '%d-%m-%Y'))
-            #answer = datetime.datetime.now().strftime('Time == ' + '%H:%M:%S' + ' Year == ' + '%d-%m-%Y')
-            #answer = datetime.datetime.now().strftime('%Y-%m-%d \n %H:%M:%S')
-
-              
-              
-            return render_template('time.html', result=answer)
-
-         
-
-@app.route('/python_apps')
-def python_apps_page():
-	# testing stuff
-	return render_template('python_apps.html')
+def index():
+  if request.method == "POST":
+    if 'sentiment' not in request.form:
+      cur = mysql.connection.cursor()
+      cur.execute('SELECT * FROM tweet')
+      data = cur.fetchone()
+      cur.close()
+      return render_template("index.html", error="አባከዎን አንዱን ምርጫ ይምረጡ", tweet=data)
 
 
-@app.route('/contact')
-def contact():
-	return render_template('contact.html')
+    else:
+      details = request.form 
+      ids = details['id']
+      response = details['sentiment']
 
-@app.route('/blog', methods=['GET'])
-def blog_page():
-  return render_template('blog.html')
+      curr = mysql.connection.cursor()
+      curr.execute("INSERT INTO response(tweet_id, ip, country, sentiment) VALUES (%s, %s,%s,%s)", (ids,1,1, response))
+      curr.execute("DELETE from tweet WHERE tweet_id = %s" % (ids))
+      mysql.connection.commit()
+      curr.close()
+      cur = mysql.connection.cursor()
+      cur.execute('SELECT * FROM tweet')
+      data = cur.fetchone()
 
-app.run(host=os.getenv('IP', '0.0.0.0'), port = int(os.getenv('PORT', 8080)))
+      cur.close()
+      return render_template("index.html", tweet=data)
+  else:
+    cur = mysql.connection.cursor()
+    cur.execute('SELECT * FROM tweet')
+    data = cur.fetchone()
 
-if __name__ == '__main__':
-	app.run(debug=False)
+    cur.close()
+    return render_template("index.html", tweet=data)
+
+@app.route('/tuna')
+def tuna():
+  return "<h2>Tuna is good</h2>"
+
+@app.route('/met', methods=['GET','POST'])
+def met():
+  if request.method == 'POST':
+    return 'you are using post'
+  else:
+    return 'you are using get'
+
+@app.route('/profile/<username>')
+def profile(username):
+  return "hay there %s"  % username
+
+@app.route('/post/<int:post_id>')
+def post(post_id):
+  return "hay there %s"  % post_id
+
+if __name__ == "__main__":
+  app.run(debug=True)
+
